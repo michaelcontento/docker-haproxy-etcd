@@ -6,7 +6,7 @@ HAPROXY_CONFIG="/etc/haproxy/haproxy.cfg"
 function update_globals
 {
     if [[ $ETCD_WATCH_KEY == *HAPROXY_* ]]; then
-        /haproxy-configure
+        haproxy-configure
     fi
 }
 
@@ -22,7 +22,7 @@ function update_server
         HOST_PORT=$TMP
     fi
 
-    HAPROXY_BACKEND_SERVER_MAX_CONNECTIONS=$(/haproxy-config-get HAPROXY_BACKEND_SERVER_MAX_CONNECTIONS)
+    HAPROXY_BACKEND_SERVER_MAX_CONNECTIONS=$(haproxy-config-get HAPROXY_BACKEND_SERVER_MAX_CONNECTIONS)
 
     if grep -q "server $HOST_NAME" $HAPROXY_CONFIG; then
         sed -i -e "s/  server ${HOST_NAME}.*$/  server $HOST_NAME ${HOST_IP}:${HOST_PORT} maxconn $HAPROXY_BACKEND_SERVER_MAX_CONNECTIONS check/g" $HAPROXY_CONFIG
@@ -58,4 +58,4 @@ case $ETCD_WATCH_ACTION in
         exit 1
 esac
 
-/haproxy-restart
+haproxy-restart

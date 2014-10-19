@@ -32,13 +32,10 @@ RUN URL_LATEST="https://github.com/coreos/etcd/releases/latest" \
 	&& URL_ETCD="https://github.com/coreos/etcd/releases/download/${VERSION}/etcd-${VERSION}-linux-amd64.tar.gz" \
 	&& wget --quiet $URL_ETCD \
 	&& tar -xzf etcd-*.tar.gz \
-	&& cp etcd-*/etcdctl /usr/bin/etcdctl_original \
+	&& cp etcd-*/etcdctl /usr/bin/ \
 	&& rm -rf etcd-*
 
-ADD etcdctl-wrapper.bash /usr/bin/etcdctl
-ADD etcdctl-initial-lookup.bash /etcdctl-initial-lookup
-ADD haproxy-config-get.bash /haproxy-config-get
-ADD haproxy-configure.bash /haproxy-configure
-ADD haproxy-restart.bash /haproxy-restart
-ADD haproxy-start.bash /haproxy-start
-ADD haproxy-update.bash /haproxy-update
+ADD bin/ /usr/local/bin
+
+# Overwrite dockerfile/haproxy start script and re-use their CMD
+ADD haproxy-start /haproxy-start

@@ -7,7 +7,7 @@ if [ $# -eq 0 ]; then
 fi
 CONFIG_NAME=$1
 
-HAPROXY_BACKEND_SERVICE=$(etcdctl get /config/HAPROXY_BACKEND_SERVICE \
+HAPROXY_BACKEND_SERVICE=$(etcdctl-haproxy get /config/HAPROXY_BACKEND_SERVICE \
     || echo "$HAPROXY_BACKEND_SERVICE" )
 
 if [ "$CONFIG_NAME" == "HAPROXY_BACKEND_SERVICE" ]; then
@@ -15,6 +15,6 @@ if [ "$CONFIG_NAME" == "HAPROXY_BACKEND_SERVICE" ]; then
     exit 0
 fi
 
-etcdctl get /config/$HAPROXY_BACKEND_SERVICE/$CONFIG_NAME \
-    || etcdctl get /config/$CONFIG_NAME \
+etcdctl-haproxy get /config/$HAPROXY_BACKEND_SERVICE/$CONFIG_NAME \
+    || etcdctl-haproxy get /config/$CONFIG_NAME \
     || echo ${!CONFIG_NAME}
