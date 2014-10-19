@@ -23,7 +23,7 @@ ENV HAPROXY_STATS_USERNAME username
 ENV HAPROXY_STATS_PASSWORD pass
 ENV HAPROXY_BACKEND_SERVER_MAX_CONNECTIONS 32
 
-ADD haproxy.cfg /etc/haproxy/haproxy.cfg
+ADD haproxy.cfg /etc/haproxy/haproxy.cfg.tpl
 ADD server.crt /etc/ssl/certs/server.crt
 
 RUN URL_LATEST="https://github.com/coreos/etcd/releases/latest" \

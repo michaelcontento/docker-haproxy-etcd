@@ -3,7 +3,15 @@ set -e
 
 HAPROXY_CONFIG="/etc/haproxy/haproxy.cfg"
 
-function update
+function update_globals
+{
+    if [[ $ETCD_WATCH_KEY == *HAPROXY_* ]]; then
+        /haproxy-configure
+        echo "GLOBAL"
+    fi
+}
+
+function update_server
 {
     HOST_NAME=$(echo $ETCD_WATCH_KEY | cut -d/ -f4)
     HOST_IP=$(echo $ETCD_WATCH_VALUE | tr -d '"{} ' | cut -d, -f1 | cut -d: -f2)
@@ -24,7 +32,7 @@ function update
     fi
 }
 
-function remove
+function remove_server
 {
     HOST_NAME=$(echo $ETCD_WATCH_KEY | cut -d/ -f4)
 
@@ -33,10 +41,18 @@ function remove
 
 case $ETCD_WATCH_ACTION in
     compareAndSwap | update | set)
-        update
+        if [[ $ETCD_WATCH_KEY == /config/* ]]; then
+            update_globals
+        else
+            update_server
+        fi
         ;;
     delete | expire)
-        remove
+        if [[ $ETCD_WATCH_KEY == /config/* ]]; then
+            update_globals
+        else
+            remove_server
+        fi
         ;;
     *)
         echo "Something went wrong..."
