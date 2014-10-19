@@ -44,5 +44,5 @@ sed -i -e "s/HAPROXY_STATS_USERNAME/$HAPROXY_STATS_USERNAME/g" $HAPROXY_CONFIG
 sed -i -e "s/HAPROXY_STATS_PASSWORD/$HAPROXY_STATS_PASSWORD/g" $HAPROXY_CONFIG
 
 if [ "$HAPROXY_FORCE_HTTPS" == "no" ]; then
-	sed -i "/redirect scheme https/d" $HAPROXY_CONFIG
+  sed -i "/redirect scheme https/d" $HAPROXY_CONFIG
 fi
