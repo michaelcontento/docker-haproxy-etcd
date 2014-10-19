@@ -36,6 +36,7 @@ RUN URL_LATEST="https://github.com/coreos/etcd/releases/latest" \
 
 ADD etcdctl-wrapper.bash /usr/bin/etcdctl
 ADD etcdctl-initial-lookup.bash /etcdctl-initial-lookup
+ADD haproxy-config-get.bash /haproxy-config-get
 ADD haproxy-configure.bash /haproxy-configure
 ADD haproxy-restart.bash /haproxy-restart
 ADD haproxy-start.bash /haproxy-start
