@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-NODES=$(etcdctl ls --recursive /services/$HAPROXY_BACKEND)
+HAPROXY_BACKEND_SERVICE=$(etcdctl get /config/HAPROXY_BACKEND_SERVICE || echo "$HAPROXY_BACKEND_SERVICE")
+NODES=$(etcdctl ls --recursive /services/$HAPROXY_BACKEND_SERVICE)
 
 for NODE_NAME in $NODES; do
   NODE_VALUE=$(etcdctl get $NODE_NAME)
