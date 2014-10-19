@@ -61,7 +61,7 @@ existing setups should be very trivial to migrate.
 		-p 443:443 \
 		michaelcontento/haproxy-etcd
 
-## Example: Use global configuration in etcd
+## Example: Use global and backend-level configuration in etcd
 
 	# Same as above but with additional configuration on backend level
 	etcdctl set /config/HAPROXY_BACKEND_SERVICE frontend
@@ -71,6 +71,23 @@ existing setups should be very trivial to migrate.
 		-p 80:80 \
 		-p 443:443 \
 		michaelcontento/haproxy-etcd
+
+## Example: Configuration value resolution
+
+	etcdctl set /config/HAPROXY_BACKEND_SERVICE global
+	etcdctl set /config/global/HAPROXY_BACKEND_SERVICE backendlevel
+	docker run --rm michaelcontento/haproxy-etcd -e HAPROXY_BACKEND_SERVICE=env
+	# Result: backendlevel
+
+	etcdctl set /config/HAPROXY_BACKEND_SERVICE global
+	docker run --rm michaelcontento/haproxy-etcd -e HAPROXY_BACKEND_SERVICE=env
+	# Result: global
+
+	docker run --rm michaelcontento/haproxy-etcd -e HAPROXY_BACKEND_SERVICE=env
+	# Result: env
+
+	docker run --rm michaelcontento/haproxy-etcd
+	# Result: default defined in Dockerfile
 
 
 [supervisord]: supervisord.org
