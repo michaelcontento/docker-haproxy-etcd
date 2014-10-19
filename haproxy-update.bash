@@ -7,7 +7,6 @@ function update_globals
 {
     if [[ $ETCD_WATCH_KEY == *HAPROXY_* ]]; then
         /haproxy-configure
-        echo "GLOBAL"
     fi
 }
 
