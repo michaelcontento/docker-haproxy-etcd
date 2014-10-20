@@ -1,11 +1,11 @@
 # haproxy-etcd
 
-[HAProxy][] docker container with servers stores in [etcd][].
+[HAProxy][] docker container with servers stored in [etcd][].
 
 # HAProxy configuration
 
 The default command for this container is `web http` which would look for
-backend servers in [etcd][] `/services/web` and would only route traffic on
+backend servers in [etcd][]'s `/services/web` and would only route traffic on
 port `80`.
 
 This is rather limited so lets have a closer look at the command. The first
@@ -47,7 +47,7 @@ but everything on `80` is redirected to `443`.
 * `http` is equal to `http=*:80`
 * `https` is equal to `https=*:443`
 * Just name the port (like `http=80`, `https=443` or `httpsProxy=9050`) to use
-  `*` as `bindHost` is used
+  `*` as `bindHost`
 
 **Example:** `http=127.0.0.1:80 https` would only allow http traffic from the
 container itself but https traffic from everywhere.
@@ -57,28 +57,28 @@ container itself but https traffic from everywhere.
 The stats key is a little bit more difficult, as you need to follow a specific
 "uri schema" to set all required values.
 
-Schema: `[user:pass@][realm://][bindIp:]bindPort/uri`
+**Schema**: `[user:pass@][realm://][bindIp:]bindPort/uri`
 
 Some parts are optional and the minimal version would be something like
 `stats=1234/stats`, which would bind to all interfaces on port `1234` and
-expose everything under `/stats` with no user authentication. Not recommanded!
+expose everything under `/stats` with no user authentication. Not recommended!
 
 * `stats=127.0.0.1:1234/stats` has still no authentication in place but limits
-  the traffic source to `localhost`.
-* `stats=admin:password@127.0.0.1:1234/stats` same as above only that you need
-  to know the very secret credentials to pass.
+  the traffic source to `localhost`
+* `stats=admin:password@127.0.0.1:1234/stats` now you need the very secret
+  credentials to pass
 * `stats=admin:password@Welcome!://127.0.0.1:1234/stats` same as above only
   with a custom realm name
 * `stats=admin:password@1234/stats` is equal to `stats=admin:password@*:1234/stats`
 
 # etcd configuration
 
-This container needs to talk with [etcd][] and for this you need to get is
+This container needs to talk with [etcd][] and for this you need to get it
 somehow accessible.
 
 But good news! This container comes with sane defaults, can be used with an
 etcd-ambassador or you can just pass the right `IP:PORT` config as a simple
-docker environemtn variable.
+docker environment variable.
 
 ## Sane defaults
 
