@@ -39,7 +39,6 @@ setValue() {
     local value=${2:-$default}
     [ -z $value ] && return
 
-
     local key=$(toTemplateKey $key)
     local value=$(regexEscape $value)
     sed -i -e "s/$key/$value/g" $CONFIG
@@ -83,7 +82,7 @@ saveBlock() {
 
 deleteBlock() {
     local key=$1
-    [ -z $key ] && error "saveBlock: key argument can't be empty"
+    [ -z $key ] && error "deleteBlock: key argument can't be empty"
 
     sed -i -e "/ *# *begin: *$key/,/ *# *end: *$key/d" $CONFIG
 }
@@ -94,7 +93,7 @@ specialRemoveForceHttpsWithoutHttpsFrontend() {
     fi
 }
 
-specialFailIfFrontendIsPresend() {
+specialFailIfNoFrontendIsPresend() {
     if ! grep " *frontend " $CONFIG >/dev/null; then
         error "at least one frontend (http, https or httpProxy) must be used"
     fi
@@ -234,7 +233,7 @@ main() {
     processDefaults
 
     specialRemoveForceHttpsWithoutHttpsFrontend
-    specialFailIfFrontendIsPresend
+    specialFailIfNoFrontendIsPresend
 }
 
 main $@
