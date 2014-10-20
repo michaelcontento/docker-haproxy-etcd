@@ -1,70 +1,240 @@
 #!/bin/bash
 set -e
 
-HAPROXY_GLOBAL_MAX_CONNECTIONS=$(haproxy-config-get HAPROXY_GLOBAL_MAX_CONNECTIONS)
-HAPROXY_DEFAULTS_MAX_CONNECTIONS=$(haproxy-config-get HAPROXY_DEFAULTS_MAX_CONNECTIONS)
-HAPROXY_DEFAULTS_RETRIES=$(haproxy-config-get HAPROXY_DEFAULTS_RETRIES)
-HAPROXY_DEFAULTS_TIMEOUT_HTTP_REQUEST=$(haproxy-config-get HAPROXY_DEFAULTS_TIMEOUT_HTTP_REQUEST)
-HAPROXY_DEFAULTS_TIMEOUT_CLIENT=$(haproxy-config-get HAPROXY_DEFAULTS_TIMEOUT_CLIENT)
-HAPROXY_DEFAULTS_TIMEOUT_CONNECT=$(haproxy-config-get HAPROXY_DEFAULTS_TIMEOUT_CONNECT)
-HAPROXY_DEFAULTS_TIMEOUT_SERVER=$(haproxy-config-get HAPROXY_DEFAULTS_TIMEOUT_SERVER)
-HAPROXY_DEFAULTS_TIMEOUT_QUEUE=$(haproxy-config-get HAPROXY_DEFAULTS_TIMEOUT_QUEUE)
-HAPROXY_DEFAULTS_TIMEOUT_HTTP_KEEP_ALIVE=$(haproxy-config-get HAPROXY_DEFAULTS_TIMEOUT_HTTP_KEEP_ALIVE)
-HAPROXY_DEFAULTS_OPTION_HTTPCHK=$(haproxy-config-get HAPROXY_DEFAULTS_OPTION_HTTPCHK)
-HAPROXY_DEFAULTS_OPTION_HTTPCHK_ENABLE=$(haproxy-config-get HAPROXY_DEFAULTS_OPTION_HTTPCHK_ENABLE)
-HAPROXY_DEFAULTS_TIMEOUT_CHECK=$(haproxy-config-get HAPROXY_DEFAULTS_TIMEOUT_CHECK)
-HAPROXY_DEFAULTS_SPREAD_CHECKS=$(haproxy-config-get HAPROXY_DEFAULTS_SPREAD_CHECKS)
-HAPROXY_DEFAULTS_MONITOR_URI=$(haproxy-config-get HAPROXY_DEFAULTS_MONITOR_URI)
-HAPROXY_STATS_PORT=$(haproxy-config-get HAPROXY_STATS_PORT)
-HAPROXY_STATS_ENABLE=$(haproxy-config-get HAPROXY_STATS_ENABLE)
-HAPROXY_STATS_URI=$(haproxy-config-get HAPROXY_STATS_URI)
-HAPROXY_STATS_REALM=$(haproxy-config-get HAPROXY_STATS_REALM)
-HAPROXY_STATS_USERNAME=$(haproxy-config-get HAPROXY_STATS_USERNAME)
-HAPROXY_STATS_PASSWORD=$(haproxy-config-get HAPROXY_STATS_PASSWORD)
-HAPROXY_FORCE_HTTPS=$(haproxy-config-get HAPROXY_FORCE_HTTPS)
-HAPROXY_HTTP_ENABLE=$(haproxy-config-get HAPROXY_HTTP_ENABLE)
-HAPROXY_HTTPS_ENABLE=$(haproxy-config-get HAPROXY_HTTPS_ENABLE)
-HAPROXY_PROXY_HTTP_ENABLE=$(haproxy-config-get HAPROXY_PROXY_HTTP_ENABLE)
-HAPROXY_PROXY_HTTP_PORT=$(haproxy-config-get HAPROXY_PROXY_HTTP_PORT)
+CONFIG="/etc/haproxy/haproxy.cfg"
 
-# create fresh working copy from base template
-WORKING_CONFIG=/tmp/haproxy.cfg
-cp -f /etc/haproxy/haproxy.cfg.tpl $WORKING_CONFIG
+log() {
+    echo "HAPROXY-ETCD: $@"
+}
 
-sed -i -e "s/HAPROXY_GLOBAL_MAX_CONNECTIONS/$HAPROXY_GLOBAL_MAX_CONNECTIONS/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_DEFAULTS_MAX_CONNECTIONS/$HAPROXY_DEFAULTS_MAX_CONNECTIONS/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_DEFAULTS_RETRIES/$HAPROXY_DEFAULTS_RETRIES/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_DEFAULTS_TIMEOUT_HTTP_REQUEST/$HAPROXY_DEFAULTS_TIMEOUT_HTTP_REQUEST/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_DEFAULTS_TIMEOUT_CLIENT/$HAPROXY_DEFAULTS_TIMEOUT_CLIENT/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_DEFAULTS_TIMEOUT_CONNECT/$HAPROXY_DEFAULTS_TIMEOUT_CONNECT/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_DEFAULTS_TIMEOUT_SERVER/$HAPROXY_DEFAULTS_TIMEOUT_SERVER/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_DEFAULTS_TIMEOUT_QUEUE/$HAPROXY_DEFAULTS_TIMEOUT_QUEUE/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_DEFAULTS_TIMEOUT_HTTP_KEEP_ALIVE/$HAPROXY_DEFAULTS_TIMEOUT_HTTP_KEEP_ALIVE/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_DEFAULTS_OPTION_HTTPCHK/$HAPROXY_DEFAULTS_OPTION_HTTPCHK/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_DEFAULTS_TIMEOUT_CHECK/$HAPROXY_DEFAULTS_TIMEOUT_CHECK/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_DEFAULTS_SPREAD_CHECKS/$HAPROXY_DEFAULTS_SPREAD_CHECKS/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_DEFAULTS_MONITOR_URI/$HAPROXY_DEFAULTS_MONITOR_URI/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_STATS_PORT/$HAPROXY_STATS_PORT/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_STATS_ENABLE/$HAPROXY_STATS_ENABLE/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_STATS_URI/$HAPROXY_STATS_URI/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_STATS_REALM/$HAPROXY_STATS_REALM/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_STATS_USERNAME/$HAPROXY_STATS_USERNAME/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_STATS_PASSWORD/$HAPROXY_STATS_PASSWORD/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_HTTP_ENABLE/$HAPROXY_HTTP_ENABLE/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_HTTPS_ENABLE/$HAPROXY_HTTPS_ENABLE/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_PROXY_HTTP_ENABLE/$HAPROXY_PROXY_HTTP_ENABLE/g" $WORKING_CONFIG
-sed -i -e "s/HAPROXY_PROXY_HTTP_PORT/$HAPROXY_PROXY_HTTP_PORT/g" $WORKING_CONFIG
+error() {
+    log "ERROR: $@"
+    exit 1
+}
 
-if [ "$HAPROXY_DEFAULTS_OPTION_HTTPCHK_ENABLE" != "enabled" ]; then
-	sed -i "/option httpchk/d" $WORKING_CONFIG
-fi
-if [ "$HAPROXY_FORCE_HTTPS" != "yes" ]; then
-    sed -i "/redirect scheme https/d" $WORKING_CONFIG
-fi
+toTemplateKey() {
+    [ -z $@ ] && error "toTemplateKey: argument can't be empty"
+    echo "%$@%" | sed -e 's/\([A-Z]\)/ \1/g' | tr '[a-z] ' '[A-Z]_'
+}
 
-# copy previously defined server records
-grep '^  server .* maxconn .*$' /etc/haproxy/haproxy.cfg \
-	>> $WORKING_CONFIG \
-	|| true
+regexEscape() {
+    [ -z $@ ] && error "regexEscape: argument can't be empty"
 
-mv -f $WORKING_CONFIG /etc/haproxy/haproxy.cfg
+    # replace "/" with "\/"
+    local value=$(echo $@ | sed -E "s#[^\\](/)#\\\\\1#g")
+
+    # but the sed call above does not match "^/foo"
+    if (echo $value | grep '^/' >/dev/null); then
+        echo "\\$value"
+    else
+        echo $value
+    fi
+}
+
+setValue() {
+    local key=$1
+    [ -z $key ] && error "setValue: key argument can't be empty"
+
+    local default=$3
+    local value=${2:-$default}
+    [ -z $value ] && return
+
+
+    local key=$(toTemplateKey $key)
+    local value=$(regexEscape $value)
+    sed -i -e "s/$key/$value/g" $CONFIG
+}
+
+setValueBind() {
+    local default=$3
+    local value=${2:-$default}
+
+    [ -z $value ] && error "setValueBind: value required for $key"
+
+    # ensure "*" interface if only the port is given
+    [[ "$value" != *:* ]] && local value="*:$value"
+
+    setValue $key $value
+}
+
+saveRow() {
+    local key=$1
+    [ -z $key ] && error "saveRow: key argument can't be empty"
+
+    local key=$(toTemplateKey $key)
+    sed -i -E "s/ *#? *$key//g" $CONFIG
+}
+
+deleteRow() {
+    local key=$1
+    [ -z $key ] && error "deleteRow: key argument can't be empty"
+
+    local key=$(toTemplateKey $key)
+    sed -i -e "/$key/d" $CONFIG
+}
+
+saveBlock() {
+    local key=$1
+    [ -z $key ] && error "saveBlock: key argument can't be empty"
+
+    sed -i -e "/ *# *begin: *$key *$/d" $CONFIG
+    sed -i -e "/ *# *end: *$key *$/d" $CONFIG
+}
+
+deleteBlock() {
+    local key=$1
+    [ -z $key ] && error "saveBlock: key argument can't be empty"
+
+    sed -i -e "/ *# *begin: *$key/,/ *# *end: *$key/d" $CONFIG
+}
+
+specialRemoveForceHttpsWithoutHttpsFrontend() {
+    if ! grep "frontend https-in" $CONFIG >/dev/null; then
+        sed -i -e "/redirect scheme https/d" $CONFIG
+    fi
+}
+
+specialFailIfFrontendIsPresend() {
+    if ! grep " *frontend " $CONFIG >/dev/null; then
+        error "at least one frontend (http, https or httpProxy) must be used"
+    fi
+}
+
+processArgument() {
+    local key=$1
+    [ -z $key ] && error "processArgument: key argument can't be empty"
+
+    local value=$2
+
+    case $key in
+        maxconn \
+        | retries \
+        | timeoutHttpRequest \
+        | timeoutClient \
+        | timeoutConnect \
+        | timeoutServer \
+        | timeoutQueue \
+        | timeoutHttpKeepAlive \
+        | httpCheck \
+        | timeoutCheck)
+            setValue $key $value
+            ;;
+
+        forceHttps)
+            if [ -z $value ] || [ "$value" == "yes" ]; then
+                saveRow $key
+            fi
+            ;;
+
+        http)
+            setValueBind $key $value *:80
+            saveBlock $key
+            ;;
+
+        https)
+            setValueBind $key $value *:443
+            saveBlock $key
+            ;;
+
+        httpProxy)
+            setValueBind $key $value
+            saveBlock $key
+            ;;
+
+        stats)
+            processStats $value
+            ;;
+
+        *)
+            error "processArgument: unknown key '$key' given"
+    esac
+}
+
+# stats=[user:pass@][realm://][host:]port/uri
+processStats() {
+    local value=$1
+    [ -z $value ] && error "stats value can't be empty"
+    saveBlock stats
+
+    # user:pass@...
+    if [[ "$value" = *@* ]]; then
+        [[ "$value" != *:*@* ]] && error "stats auth segment needs user AND password"
+        [[ "$value" = :*@* ]] && error "stats user can't be empty"
+        [[ "$value" = *:@* ]] && error "stats password can't be empty"
+
+        local parts=(${value/@/ })
+        value=${parts[1]}
+        parts=(${parts/:/ })
+
+        local user=${parts[0]}
+        local password=${parts[1]}
+
+        setValue statsUser $user
+        setValue statsPassword $password
+    else
+        deleteRow statsUser
+        deleteRow statsPassword
+    fi
+
+    # ...@realm://...
+    local realm="HAProxy"
+    if [[ "$value" = *://* ]]; then
+        [[ "$value" = ://* ]] && error "stats realm can't be empty"
+
+        local parts=(${value/:\/\// })
+        realm=${parts[0]}
+        value=${parts[1]}
+    fi
+    setValue statsRealm $realm
+
+    # ...realm://host:...
+    local host="*"
+    if [[ "$value" = *:* ]]; then
+        [[ "$value" = :* ]] && error "stats host can't be empty"
+
+        local parts=(${value/:/ })
+        host=${parts[0]}
+        value=${parts[1]}
+    fi
+    setValue statsHost $host
+
+    # ...port/uri
+    [[ "$value" != */* ]] && error "stats requires port AND uri"
+    local parts=(${value/\// })
+    local port=${parts[0]}
+    local uri=${parts[1]}
+    [ -z $uri ] && error "stats uri can't be empty"
+    setValue statsPort $port
+    setValue statsUri $uri
+}
+
+processDefaults() {
+    setValue maxconn 1000
+    setValue retries 3
+    setValue timeoutHttpRequest 10s
+    setValue timeoutClient 1m
+    setValue timeoutConnect 10s
+    setValue timeoutServer 1m
+    setValue timeoutQueue 1m
+    setValue timeoutHttpKeepAlive 10s
+    setValue timeoutCheck 5s
+    deleteRow httpCheck
+    deleteRow forceHttps
+    deleteBlock http
+    deleteBlock https
+    deleteBlock httpProxy
+    deleteBlock stats
+}
+
+main() {
+    for argument in $@; do
+        argument=(${argument/=/ })
+        processArgument ${argument[0]} ${argument[1]}
+    done
+    processDefaults
+
+    specialRemoveForceHttpsWithoutHttpsFrontend
+    specialFailIfFrontendIsPresend
+}
+
+main $@

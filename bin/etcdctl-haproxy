@@ -7,5 +7,4 @@ if [ "$LINKED_ETCDCTL_PEER" != ":" ]; then
     ETCDCTL_PEER="$LINKED_ETCDCTL_PEER"
 fi
 
-# Suppress error messages and favour a clean log
-etcdctl --peers $ETCDCTL_PEER $@ 2>/dev/null
+etcdctl --peers $ETCDCTL_PEER $@

@@ -1,14 +1,7 @@
 #!/bin/bash
 set -e
 
-HAPROXY_CONFIG="/etc/haproxy/haproxy.cfg"
-
-function update_globals
-{
-    if [[ $ETCD_WATCH_KEY == *HAPROXY_* ]]; then
-        haproxy-configure
-    fi
-}
+CONFIG="/etc/haproxy/haproxy.cfg"
 
 function update_server
 {
@@ -22,12 +15,10 @@ function update_server
         HOST_PORT=$TMP
     fi
 
-    HAPROXY_BACKEND_SERVER_MAX_CONNECTIONS=$(haproxy-config-get HAPROXY_BACKEND_SERVER_MAX_CONNECTIONS)
-
-    if grep -q "server $HOST_NAME" $HAPROXY_CONFIG; then
-        sed -i -e "s/  server ${HOST_NAME}.*$/  server $HOST_NAME ${HOST_IP}:${HOST_PORT} maxconn $HAPROXY_BACKEND_SERVER_MAX_CONNECTIONS check/g" $HAPROXY_CONFIG
+    if grep -q "server $HOST_NAME" $CONFIG; then
+        sed -i -e "s/  server ${HOST_NAME}.*$/  server $HOST_NAME ${HOST_IP}:${HOST_PORT} maxconn 32 check/g" $CONFIG
     else
-        echo "  server $HOST_NAME ${HOST_IP}:${HOST_PORT} maxconn $HAPROXY_BACKEND_SERVER_MAX_CONNECTIONS check" >> $HAPROXY_CONFIG
+        echo "  server $HOST_NAME ${HOST_IP}:${HOST_PORT} maxconn 32 check" >> $CONFIG
     fi
 }
 
@@ -35,23 +26,15 @@ function remove_server
 {
     HOST_NAME=$(echo $ETCD_WATCH_KEY | cut -d/ -f4)
 
-    sed -i'' "/server $HOST_NAME /d" $HAPROXY_CONFIG
+    sed -i'' "/server $HOST_NAME /d" $CONFIG
 }
 
 case $ETCD_WATCH_ACTION in
     compareAndSwap | update | set)
-        if [[ $ETCD_WATCH_KEY == /config/* ]]; then
-            update_globals
-        else
-            update_server
-        fi
+        update_server
         ;;
     delete | expire)
-        if [[ $ETCD_WATCH_KEY == /config/* ]]; then
-            update_globals
-        else
-            remove_server
-        fi
+        remove_server
         ;;
     *)
         echo "Something went wrong..."

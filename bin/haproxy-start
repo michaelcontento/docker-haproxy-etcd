@@ -1,0 +1,25 @@
+#!/bin/bash
+set -e
+
+if [ $# -eq 0 ]; then
+    echo "usage: haproxy-start ETCD_SERVICES"
+    exit 1
+fi
+ETCD_SERVICES=$1
+shift
+
+haproxy-configure $@
+
+nodes=$(etcdctl-haproxy ls --recursive /services/$ETCD_SERVICES)
+for name in $nodes; do
+    ETCD_WATCH_ACTION="set" \
+        ETCD_WATCH_KEY=$name \
+        ETCD_WATCH_VALUE=$(etcdctl-haproxy get $name) \
+        haproxy-update
+done
+
+trap "exit" SIGHUP SIGINT SIGTERM
+
+etcdctl-haproxy exec-watch \
+    --recursive /services/$ETCD_SERVICES \
+    -- haproxy-update

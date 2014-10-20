@@ -1,98 +1,118 @@
 # haproxy-etcd
 
-[HAProxy][] docker container which loads all options and server definitions
-from [coreos/etcd][].
+[HAProxy][] docker container with servers stores in [etcd][].
 
-Heavily inspired and based on [redguava/docker-haproxy-etcd][] but with quite a
-few addition / changes.
+# HAProxy configuration
 
-*BUT* it should be API compatible with [redguava/docker-haproxy-etcd][] and
-existing setups should be very trivial to migrate.
+The default command for this container is `web http` which would look for
+backend servers in [etcd][] `/services/web` and would only route traffic on
+port `80`.
 
-# Differences
+This is rather limited so lets have a closer look at the command. The first
+argument is the name of the "service group" (the folder in `/services/`).
+Pretty easy, huh?
 
-* Based on `dockerfiles/haproxy` instead of `redguava/docker-haproxy`
-* Thus reduced image size (427.4MB instead of 719.6MB)
-* Order of `IP` and `PORT` in server config is no longer important
-* Supports etcd ambassador via [polvi/simple-amb][]
-* Adds `HAPROXY_FORCE_HTTPS` config variable (default: yes)
-* Restarts [haproxy][] only if config has changes (md5 checksum based)
-* It's possible to declare configuration as docker ENV variable
-* `ETCDCTL_PEER` can be set via docker ENV variable too
-* Multi-level config loading (`/config/$BACKEND/$KEY` -> `/config/$KEY` -> `ENV[$KEY]`)
-* Replaced [supervisord][] setup with a few simple `bash` scripts
-* Detect and apply changes in [coreos/etcd][] keyspace `/config/` too
+After the first fixed argument it gets more flexible, as everything else is
+used to configure or enable some parts of the `haproxy.cfg`. The `http` of the
+default command for example will enable the routing of port `80` traffic. Just
+replace it with `https` and port `443` is open. And yes, you can combine them :)
 
-# Examples
+## Simple `key=value` settings
 
-## Example: CoreOS + etcd-Ambassador
+It's possible to assign custom values to almost all commands and change their
+effect. The syntax is always `key=value` and most of the time there are sane
+defaults in place.
 
-	# Expose CoreOS etcd
+| Name                 | Default | Notes                                      |
+|----------------------|---------|--------------------------------------------|
+| maxconn              | 1000    | set `maxconn`                              |
+| retries              | 3       | set `retries`                              |
+| timeoutHttpRequest   | 10s     | set `timeout http-request`                 |
+| timeoutClient        | 1m      | set `timeout client`                       |
+| timeoutConnect       | 10s     | set `timeout connect`                      |
+| timeoutServer        | 1m      | set `timeout server`                       |
+| timeoutQueue         | 1m      | set `timeout queue`                        |
+| timeoutHttpKeepAlive | 10s     | set `timeout http-keep-alive`              |
+| timeoutCheck         | 5s      | set `timeout check`                        |
+| httpCheck            | no      | `httpCheck=/ping` would active an http based healthcheck on the `/ping` URI |
+| forceHttps           | no      | `yes` would redirect `http://` traffic to `https://`; `forceHttps` is equal to `forceHttps=yes` |
+
+**Example:** `httpCheck=/api/v1/ping http https forceHttps` would enable a http
+based healthcheck on `/api/v1/ping`, allow traffic on both port `80` and `443`
+but everything on `80` is redirected to `443`.
+
+## Complex keys
+
+* `http`, `https` and `httpProxy` expect `bindIp:bindPort` as value
+* `http` is equal to `http=*:80`
+* `https` is equal to `https=*:443`
+* Just name the port (like `http=80`, `https=443` or `httpsProxy=9050`) to use
+  `*` as `bindHost` is used
+
+**Example:** `http=127.0.0.1:80 https` would only allow http traffic from the
+container itself but https traffic from everywhere.
+
+## Stats
+
+The stats key is a little bit more difficult, as you need to follow a specific
+"uri schema" to set all required values.
+
+Schema: `[user:pass@][realm://][bindIp:]bindPort/uri`
+
+Some parts are optional and the minimal version would be something like
+`stats=1234/stats`, which would bind to all interfaces on port `1234` and
+expose everything under `/stats` with no user authentication. Not recommanded!
+
+* `stats=127.0.0.1:1234/stats` has still no authentication in place but limits
+  the traffic source to `localhost`.
+* `stats=admin:password@127.0.0.1:1234/stats` same as above only that you need
+  to know the very secret credentials to pass.
+* `stats=admin:password@Welcome!://127.0.0.1:1234/stats` same as above only
+  with a custom realm name
+* `stats=admin:password@1234/stats` is equal to `stats=admin:password@*:1234/stats`
+
+# etcd configuration
+
+This container needs to talk with [etcd][] and for this you need to get is
+somehow accessible.
+
+But good news! This container comes with sane defaults, can be used with an
+etcd-ambassador or you can just pass the right `IP:PORT` config as a simple
+docker environemtn variable.
+
+## Sane defaults
+
+	docker run --rm -i \
+		-t michaelcontento/haproxy-etcd
+
+Would try to talk with `172.17.42.1:4001`.
+
+## As docker environment variable
+
+	docker run --rm -i \
+		-e ETCDCTL_PEER=1.2.3.4:4001 \
+		-t michaelcontento/haproxy-etcd
+
+Would, as you might expect, talk to `1.2.3.4:4001`.
+
+## With an etcd-ambassador
+
+First start the ambassador container for [etcd][]:
+
 	docker run --rm \
 		--name etcd-amb-client \
 		polvi/simple-amb ${COREOS_PRIVATE_IPV4}:4001
 
-	# Run haproxy with servers configured in /services/frontend
+And now start your [haproxy-etcd][] and link the ambassador:
+
 	docker run --rm \
 		--link etcd-amb-client:etcd \
-		--name frontend-haproxy \
-		-e HAPROXY_BACKEND_SERVICE=frontend \
-		-p 80:80 \
-		-p 443:443 \
 		michaelcontento/haproxy-etcd
-
-## Example: Default etcd location
-
-	# Same as above but this time the default etcd location is used
-	docker run --rm \
-		--name frontend-haproxy \
-		-e HAPROXY_BACKEND_SERVICE=frontend \
-		-p 80:80 \
-		-p 443:443 \
-		michaelcontento/haproxy-etcd
-
-## Example: Use global configuration in etcd
-
-	# Same as above but this time we load the server namespace from etcd
-	etcdctl set /config/HAPROXY_BACKEND_SERVICE frontend
-	docker run --rm \
-		--name frontend-haproxy \
-		-p 80:80 \
-		-p 443:443 \
-		michaelcontento/haproxy-etcd
-
-## Example: Use global and backend-level configuration in etcd
-
-	# Same as above but with additional configuration on backend level
-	etcdctl set /config/HAPROXY_BACKEND_SERVICE frontend
-	etcdctl set /config/frontend/HAPROXY_FORCE_HTTPS no
-	docker run --rm \
-		--name frontend-haproxy \
-		-p 80:80 \
-		-p 443:443 \
-		michaelcontento/haproxy-etcd
-
-## Example: Configuration value resolution
-
-	etcdctl set /config/HAPROXY_BACKEND_SERVICE global
-	etcdctl set /config/global/HAPROXY_BACKEND_SERVICE backendlevel
-	docker run --rm michaelcontento/haproxy-etcd -e HAPROXY_BACKEND_SERVICE=env
-	# Result: backendlevel
-
-	etcdctl set /config/HAPROXY_BACKEND_SERVICE global
-	docker run --rm michaelcontento/haproxy-etcd -e HAPROXY_BACKEND_SERVICE=env
-	# Result: global
-
-	docker run --rm michaelcontento/haproxy-etcd -e HAPROXY_BACKEND_SERVICE=env
-	# Result: env
-
-	docker run --rm michaelcontento/haproxy-etcd
-	# Result: default defined in Dockerfile
-
 
 [supervisord]: supervisord.org
 [polvi/simple-amb]: https://registry.hub.docker.com/u/polvi/simple-amb/
-[coreos/etcd]: https://github.com/coreos/etcd
+[etcd]: https://github.com/coreos/etcd
+[haproxy-etcd]: https://github.com/michaelcontento/docker-haproxy-etcd
 [haproxy]: http://www.haproxy.org/
 [redguava/docker-haproxy-etcd]: https://github.com/redguava/docker-haproxy-etcd
 [dockerfile/haproxy]: https://github.com/dockerfile/haproxy
