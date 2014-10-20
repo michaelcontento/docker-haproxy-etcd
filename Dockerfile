@@ -15,5 +15,5 @@ RUN URL_LATEST="https://github.com/coreos/etcd/releases/latest" \
 
 ADD bin/ /usr/local/bin
 
-ENTRYPOINT ["bash", "haproxy-start"]
+ENTRYPOINT ["haproxy-start"]
 CMD ["web", "http"]
