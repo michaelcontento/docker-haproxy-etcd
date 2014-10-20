@@ -2,6 +2,7 @@
 set -e
 
 CONFIG="/etc/haproxy/haproxy.cfg"
+PRINT_FINAL_CONFIG=0
 
 log() {
     echo "HAPROXY-ETCD: $@"
@@ -99,6 +100,14 @@ specialFailIfNoFrontendIsPresend() {
     fi
 }
 
+specialPrintConfig() {
+    [ $PRINT_FINAL_CONFIG -eq 0 ] && return
+
+    IFS='' && while read line; do
+        log "printConfig: $line"
+    done <$CONFIG
+}
+
 processArgument() {
     local key=$1
     [ -z $key ] && error "processArgument: key argument can't be empty"
@@ -142,6 +151,10 @@ processArgument() {
 
         stats)
             processStats $value
+            ;;
+
+        printConfig)
+            PRINT_FINAL_CONFIG=1
             ;;
 
         *)
@@ -234,6 +247,7 @@ main() {
 
     specialRemoveForceHttpsWithoutHttpsFrontend
     specialFailIfNoFrontendIsPresend
+    specialPrintConfig
 }
 
 main $@

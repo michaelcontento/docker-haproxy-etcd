@@ -71,6 +71,10 @@ expose everything under `/stats` with no user authentication. Not recommended!
   with a custom realm name
 * `stats=admin:password@1234/stats` is equal to `stats=admin:password@*:1234/stats`
 
+## Debugging with `printConfig`
+
+Just add `printConfig` and watch `stdout` to see the generated `haproxy.cfg`.
+
 # etcd configuration
 
 This container needs to talk with [etcd][] and for this you need to get it
