@@ -13,6 +13,10 @@ error() {
     exit 1
 }
 
+warning() {
+    log "WARNING: $@"
+}
+
 toTemplateKey() {
     [ -z $@ ] && error "toTemplateKey: argument can't be empty"
     echo "%$@%" | sed -e 's/\([A-Z]\)/ \1/g' | tr '[a-z] ' '[A-Z]_'
@@ -55,6 +59,7 @@ setValueBind() {
     [[ "$value" != *:* ]] && local value="*:$value"
 
     setValue $key $value
+    log "routing $key traffic on $value"
 }
 
 saveRow() {
@@ -89,8 +94,12 @@ deleteBlock() {
 }
 
 specialRemoveForceHttpsWithoutHttpsFrontend() {
+    if ! grep "redirect scheme https" $CONFIG >/dev/null; then
+        return
+    fi
     if ! grep "frontend https-in" $CONFIG >/dev/null; then
         sed -i -e "/redirect scheme https/d" $CONFIG
+        warning "no https backend enabled; discarding forceHttps option!"
     fi
 }
 
@@ -126,11 +135,13 @@ processArgument() {
         | httpCheck \
         | timeoutCheck)
             setValue $key $value
+            log "user config found: $key=$value"
             ;;
 
         forceHttps)
             if [ -z $value ] || [ "$value" == "yes" ]; then
                 saveRow $key
+                log "forcing http traffic to https"
             fi
             ;;
 
@@ -218,6 +229,9 @@ processStats() {
     [ -z $uri ] && error "stats uri can't be empty"
     setValue statsPort $port
     setValue statsUri $uri
+
+    log "stats backend enabled at $host:$port/$uri"
+    [ -z $user ] && warning "no authentication used for stats backend (try: stats=USER:PASS@$host:$port/$uri)"
 }
 
 processDefaults() {
