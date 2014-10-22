@@ -18,8 +18,6 @@ for name in $nodes; do
         haproxy-update
 done
 
-trap "exit" SIGHUP SIGINT SIGTERM
-
-etcdctl-haproxy exec-watch \
+exec etcdctl-haproxy exec-watch \
     --recursive /services/$ETCD_SERVICES \
     -- haproxy-update
